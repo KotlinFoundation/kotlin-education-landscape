@@ -1,0 +1,28 @@
+apiVersion: skaffold/v4beta8
+kind: Config
+metadata:
+  name: kotlin-education-landscape
+build:
+  tagPolicy:
+    sha256: {} # Please don't change this, until you really know what you are doing
+  artifacts:
+    - image: ghcr.io/jetbrains/kotlin-education-landscape/dashboard
+      docker: {}
+  local:
+    useDockerCLI: false
+    useBuildkit: true
+deploy:
+  helm:
+    releases:
+      - name: kotlin-education-landscape
+        remoteChart: oci://ghcr.io/jetbrains/sre-helm-charts/simple-app
+        version: 0.3.5
+        namespace: eartser-test
+        upgradeOnChange: true
+        setValueTemplates:
+          image: "{{.IMAGE_FULLY_QUALIFIED}}"
+          applicationName: kotlin-education-landscape   # Must match the release name from above
+        valuesFiles:
+          - values.yaml
+profiles:
+  - name: prod # Your Skaffold profile name

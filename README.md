@@ -46,7 +46,7 @@ All sources flow into one unified collection (`courses_unified`) with a consiste
 
 ## The orchestrator (`pipeline/main.py`)
 
-The main entry point for running the entire pipeline or its individual phases is [pipeline/main.py](file:///Users/markseif/Desktop/Projects/kotlin-education-landscape/pipeline/main.py).
+The main entry point for running the entire pipeline or its individual phases is [pipeline/main.py](pipeline/main.py).
 
 ```bash
 # Run everything

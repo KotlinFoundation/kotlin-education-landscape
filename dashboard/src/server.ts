@@ -46,6 +46,10 @@ function isH3SwallowedErrorBody(body: string): boolean {
 
 export default {
   async fetch(request: Request, env: unknown, ctx: unknown) {
+    // Liveness/readiness probe used by the simple-app Helm chart
+    if (new URL(request.url).pathname === "/healthz") {
+      return new Response("ok", { headers: { "content-type": "text/plain" } });
+    }
     try {
       const handler = await getServerEntry();
       const response = await handler.fetch(request, env, ctx);

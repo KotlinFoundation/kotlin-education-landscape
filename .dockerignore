@@ -1,0 +1,12 @@
+.git
+.github
+.idea
+**/.env
+**/.env.*
+**/node_modules
+**/.output
+**/.tanstack
+**/__pycache__
+basecompare
+pipeline
+scraper

@@ -1,0 +1,7 @@
+containerPort: 8080
+
+# Public ingress: https://kotlin-education-landscape.labs.jb.gg
+# (default internal-nginx is VPN/office-only)
+domainName: labs.jb.gg
+ingress:
+  className: nginx

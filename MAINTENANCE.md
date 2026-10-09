@@ -6,7 +6,7 @@ This is a guide to running and maintaining the project after GSoC. I wrote it fo
 
 The pipeline finds where Kotlin is taught — universities, MOOCs, and GitHub repos — and puts it all in one MongoDB database. A set of collector scripts pull the raw data, a normalizer merges it into a single collection, an AI step reads university pages and tags the real programs with their topics, and export scripts dump everything to JSON files that the dashboard reads.
 
-The dashboard never talks to MongoDB. It reads static JSON files that get committed to the repo. So updating the live site means: re-run the exports, commit the JSON, push. Railway redeploys on its own.
+The dashboard never talks to MongoDB. It reads static JSON files that get committed to the repo. So updating the live site means: re-run the exports, commit the JSON, push to `main`. GitHub Actions rebuilds the image and redeploys on its own.
 
 ## Setup
 
@@ -44,7 +44,7 @@ There's also some junk you can ignore: `courses_unified_backup`, `serp_progress_
 
 ## Running the pipeline
 
-The entire pipeline can be run or individual steps executed using the main orchestrator script: [pipeline/main.py](file:///Users/markseif/Desktop/Projects/kotlin-education-landscape/pipeline/main.py).
+The entire pipeline can be run or individual steps executed using the main orchestrator script: [pipeline/main.py](pipeline/main.py).
 
 Alternatively, you can run individual scripts manually.
 
@@ -105,7 +105,7 @@ python pipeline/export_programs.py dashboard/public/data          # programs.jso
 python dashboard/generate_insights.py dashboard/public/data       # insights.json (AI blurb per chart)
 ```
 
-**Publishing.** Railway watches the repo and redeploys when you push.
+**Publishing.** Pushing to `main` triggers `.github/workflows/deploy.yaml`, which builds the Docker image and deploys it to GKE with Skaffold (`skaffold.yaml`, `values.yaml`). The JSON files are baked into the image, so a push is the only way to update the live data.
 
 ```bash
 git add dashboard/public/data
@@ -136,7 +136,7 @@ If you only re-ran the AI enrichment, you can just run `pipeline/main.py --expor
 
 ## The dashboard
 
-It's a TanStack Start app (React + TypeScript) on Railway. It reads the JSON files in `public/data/` and that's it — no backend, no database connection. The files it looks for are `courses_unified.json`, `serp_progress.json`, `baseline_comparison.json`, `programs.json`, `topics.json`, and `insights.json`. If one's missing the related charts just hide themselves instead of breaking.
+It's a TanStack Start app (React + TypeScript), deployed to the `europe-west1-production` GKE cluster (namespace `eartser-test`) via the `simple-app` Helm chart. It reads the JSON files in `public/data/` and that's it — no backend, no database connection. The files it looks for are `courses_unified.json`, `serp_progress.json`, `baseline_comparison.json`, `programs.json`, `topics.json`, and `insights.json`. If one's missing the related charts just hide themselves instead of breaking.
 
 Change the frontend to change what's shown; re-run the exports to change the data.
 
@@ -169,5 +169,5 @@ Quick checklist:
 - rotate every secret and confirm `.env` is ignored
 - clear out the backup and experiment collections once you trust the live data
 - make sure the six JSON files in `public/data/` are current and committed
-- confirm Railway is still connected to the repo
+- confirm the last "Build and Deploy" workflow run on `main` succeeded
 - update this file if you change any of the scripts
