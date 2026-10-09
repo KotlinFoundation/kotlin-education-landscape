@@ -105,7 +105,7 @@ python pipeline/export_programs.py dashboard/public/data          # programs.jso
 python dashboard/generate_insights.py dashboard/public/data       # insights.json (AI blurb per chart)
 ```
 
-**Publishing.** Pushing to `main` triggers `.github/workflows/deploy.yaml`, which builds the Docker image and deploys it to GKE with Skaffold (`skaffold.yaml`, `values.yaml`). The JSON files are baked into the image, so a push is the only way to update the live data.
+**Publishing.** Pushing to `main` triggers `.github/workflows/deploy.yaml`, which builds the Docker image, pushes it to `ghcr.io/kotlinfoundation/kotlin-education-landscape`, and applies the manifests in `k8s/` to GKE. The JSON files are baked into the image, so a push is the only way to update the live data.
 
 ```bash
 git add dashboard/public/data
@@ -136,7 +136,7 @@ If you only re-ran the AI enrichment, you can just run `pipeline/main.py --expor
 
 ## The dashboard
 
-It's a TanStack Start app (React + TypeScript), deployed to the `europe-west1-production` GKE cluster (namespace `eartser-test`) via the `simple-app` Helm chart. It reads the JSON files in `public/data/` and that's it — no backend, no database connection. The files it looks for are `courses_unified.json`, `serp_progress.json`, `baseline_comparison.json`, `programs.json`, `topics.json`, and `insights.json`. If one's missing the related charts just hide themselves instead of breaking.
+It's a TanStack Start app (React + TypeScript), deployed to the `europe-west1-production` GKE cluster (namespace `eartser-test`) from the plain Kubernetes manifests in `k8s/` (Deployment, Service, Ingress). It reads the JSON files in `public/data/` and that's it — no backend, no database connection. The files it looks for are `courses_unified.json`, `serp_progress.json`, `baseline_comparison.json`, `programs.json`, `topics.json`, and `insights.json`. If one's missing the related charts just hide themselves instead of breaking.
 
 Change the frontend to change what's shown; re-run the exports to change the data.
 

@@ -1,4 +1,4 @@
-name: Build and Deploy
+name: Deploy to GKE
 
 on:
   push:
@@ -6,30 +6,78 @@ on:
       - main
   workflow_dispatch: {}
 
+env:
+  SERVICE_ACCOUNT: 'ghc-01d118abb59575aca0e85079b4@jetbrains-github-controller.iam.gserviceaccount.com'
+  WORKLOAD_IDENTITY_PROVIDER: 'projects/1035036546488/locations/global/workloadIdentityPools/github-controller/providers/github-org-92105527'
+  GCP_PROJECT_ID: 'jetbrains-github-controller'
+
+  CLUSTER_NAME: 'europe-west1-production'
+  CLUSTER_REGION: 'europe-west1'
+  CLUSTER_PROJECT: 'itk8s-208609'
+  NAMESPACE: 'eartser-test'
+
+  # GHCR image names must be lowercase
+  IMAGE: 'ghcr.io/kotlinfoundation/kotlin-education-landscape'
+
 jobs:
   deploy:
+    runs-on: ubuntu-latest
+
     permissions:
       contents: read
-      packages: write
       id-token: write
-    uses: JetBrains/sre-workflows/.github/workflows/gke-skaffold.yaml@master
-    with:
-      # GCP and cluster configuration
-      gcp_project: itk8s-208609
-      gcp_region: europe-west1
-      gke_cluster: europe-west1-production
+      packages: write
 
-      # Authentication
-      service_account: ghc-01d118abb59575aca0e85079b4@jetbrains-github-controller.iam.gserviceaccount.com
-      workload_identity_provider: projects/1035036546488/locations/global/workloadIdentityPools/github-controller/providers/github-org-92105527
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
 
-      # Skaffold configuration
-      skaffold_profile: prod # Your Skaffold profile name
-      context: . # Path to skaffold.yaml (default: repository root)
+      - name: Log in to GHCR
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
 
-      # Optional parameters (uncomment and adjust if needed)
-      # helm_version: v3.18.4
-      # skaffold_command: run # or 'deploy', 'dev', etc.
-      # skaffold_extra_params: "--cache-artifacts=false"
-      # setup_java_version: "17" # If your build requires Java
-      # setup_java_distribution: corretto
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Build and push image
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          platforms: linux/amd64
+          push: true
+          tags: |
+            ${{ env.IMAGE }}:${{ github.sha }}
+            ${{ env.IMAGE }}:latest
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      - name: Authenticate to GCP (DNS endpoint)
+        id: auth
+        uses: google-github-actions/auth@v2
+        with:
+          service_account: ${{ env.SERVICE_ACCOUNT }}
+          workload_identity_provider: ${{ env.WORKLOAD_IDENTITY_PROVIDER }}
+          project_id: ${{ env.GCP_PROJECT_ID }}
+
+      - name: Set up Cloud SDK
+        uses: google-github-actions/setup-gcloud@v2
+        with:
+          version: '>= 532.0.0'
+          install_components: kubectl
+
+      - name: Get cluster credentials
+        run: |
+          gcloud container clusters get-credentials ${{ env.CLUSTER_NAME }} \
+            --region ${{ env.CLUSTER_REGION }} \
+            --project ${{ env.CLUSTER_PROJECT }} \
+            --dns-endpoint
+
+      - name: Deploy
+        run: |
+          # Pin the image to this commit so every push rolls out a new version
+          sed -i "s|image: ${IMAGE}:latest|image: ${IMAGE}:${GITHUB_SHA}|" k8s/deployment.yaml
+          kubectl apply -f k8s/ -n ${{ env.NAMESPACE }}
+          kubectl rollout status deployment/kotlin-education-landscape -n ${{ env.NAMESPACE }} --timeout=5m

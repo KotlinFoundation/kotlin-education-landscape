@@ -1,0 +1,27 @@
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: kotlin-education-landscape
+  labels:
+    app: kotlin-education-landscape
+  annotations:
+    cert-manager.io/cluster-issuer: letsencrypt-prod
+    nginx.ingress.kubernetes.io/ssl-redirect: "true"
+spec:
+  # Public ingress; use internal-nginx for VPN/office-only access
+  ingressClassName: nginx
+  tls:
+    - hosts:
+        - kotlin-education-landscape.labs.jb.gg
+      secretName: kotlin-education-landscape-labs-jb-gg-tls
+  rules:
+    - host: kotlin-education-landscape.labs.jb.gg
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: kotlin-education-landscape
+                port:
+                  name: http

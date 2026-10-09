@@ -1,0 +1,52 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: kotlin-education-landscape
+  labels:
+    app: kotlin-education-landscape
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: kotlin-education-landscape
+  template:
+    metadata:
+      labels:
+        app: kotlin-education-landscape
+    spec:
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 1000
+        runAsGroup: 1000
+        seccompProfile:
+          type: RuntimeDefault
+      containers:
+        - name: kotlin-education-landscape
+          # Replaced with the commit SHA tag by the deploy workflow
+          image: ghcr.io/kotlinfoundation/kotlin-education-landscape:latest
+          ports:
+            - name: http
+              containerPort: 8080
+          readinessProbe:
+            httpGet:
+              path: /healthz
+              port: http
+            initialDelaySeconds: 5
+            periodSeconds: 5
+          livenessProbe:
+            httpGet:
+              path: /healthz
+              port: http
+            initialDelaySeconds: 15
+            periodSeconds: 10
+          resources:
+            requests:
+              cpu: 100m
+              memory: 256Mi
+            limits:
+              cpu: "1"
+              memory: 1Gi
+          securityContext:
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop: ["ALL"]
